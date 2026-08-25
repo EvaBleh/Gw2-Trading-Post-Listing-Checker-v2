@@ -12,6 +12,11 @@ const itemTbody = document.getElementById("item-tbody");
 const toastContainer = document.getElementById("toasts");
 const configJsonInput = document.getElementById("config-json");
 const refreshIntervalInput = document.getElementById("refresh-interval-input");
+const categoryDialog = document.getElementById("category-dialog");
+const categoryDialogForm = document.getElementById("category-dialog-form");
+const categoryDialogTitle = document.getElementById("category-dialog-title");
+const categoryNameInput = document.getElementById("category-name-input");
+const categoryDialogCancel = document.getElementById("category-dialog-cancel");
 
 const DEFAULT_REFRESH_INTERVAL_SECONDS = 60;
 
@@ -49,7 +54,7 @@ function renderCategories() {
   for (const name of Object.keys(config.items || {})) {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `settings__cat${name === selectedCategory ? " settings__cat--selected" : ""}`;
+    button.className = `settings__cat-item${name === selectedCategory ? " settings__cat-item--active" : ""}`;
     button.textContent = name;
     button.addEventListener("click", () => selectCategory(name));
     const li = document.createElement("li");
@@ -95,24 +100,51 @@ function escapeHtml(value) {
   return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-function addCategory() {
-  const name = prompt("Category name:");
-  if (!name || config.items[name]) return;
+function requestCategoryName(title, initialValue = "") {
+  return new Promise((resolve) => {
+    categoryDialogTitle.textContent = title;
+    categoryNameInput.value = initialValue;
+    categoryDialog.hidden = false;
+    categoryNameInput.focus();
+    categoryNameInput.select();
+
+    const finish = (value) => {
+      categoryDialog.hidden = true;
+      categoryDialogForm.removeEventListener("submit", submit);
+      categoryDialogCancel.removeEventListener("click", cancel);
+      resolve(value);
+    };
+    const submit = (event) => {
+      event.preventDefault();
+      finish(categoryNameInput.value.trim());
+    };
+    const cancel = () => finish(null);
+    categoryDialogForm.addEventListener("submit", submit);
+    categoryDialogCancel.addEventListener("click", cancel);
+  });
+}
+
+async function addCategory() {
+  const name = await requestCategoryName("Add category");
+  if (!name) return;
+  if (config.items[name]) return showMessage("A category with that name already exists.", true);
   config.items[name] = { _default_order_type: "sell" };
   selectCategory(name);
 }
 
-function renameCategory() {
+async function renameCategory() {
   if (!selectedCategory) return;
-  const name = prompt("New category name:", selectedCategory);
-  if (!name || name === selectedCategory || config.items[name]) return;
+  const name = await requestCategoryName("Rename category", selectedCategory);
+  if (!name || name === selectedCategory) return;
+  if (config.items[name]) return showMessage("A category with that name already exists.", true);
   config.items[name] = config.items[selectedCategory];
   delete config.items[selectedCategory];
   selectCategory(name);
 }
 
 function deleteCategory() {
-  if (!selectedCategory || !confirm(`Delete category "${selectedCategory}"?`)) return;
+  if (!selectedCategory) return showMessage("Select a category first.", true);
+  if (!confirm(`Delete category "${selectedCategory}"?`)) return;
   delete config.items[selectedCategory];
   selectedCategory = Object.keys(config.items)[0] || null;
   selectedItemName = null;

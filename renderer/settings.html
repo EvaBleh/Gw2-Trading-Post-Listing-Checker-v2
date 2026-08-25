@@ -129,6 +129,17 @@
   <!-- Toast container -->
   <div class="toast-container" id="toasts"></div>
 
+  <div class="category-dialog" id="category-dialog" hidden>
+    <form class="category-dialog__panel" id="category-dialog-form">
+      <h3 class="category-dialog__title" id="category-dialog-title">Category name</h3>
+      <input class="input" id="category-name-input" type="text" maxlength="80" autocomplete="off">
+      <div class="category-dialog__actions">
+        <button class="btn btn--secondary btn--sm" type="button" id="category-dialog-cancel">Cancel</button>
+        <button class="btn btn--primary btn--sm" type="submit">OK</button>
+      </div>
+    </form>
+  </div>
+
   <script src="settings.js"></script>
 </body>
 </html>
