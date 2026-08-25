@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<!--
+  recipe.html — Recipe tree popup window
+  Opens with ?name=ItemName&id=12345 query parameters.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self'">
+  <title>Recipe</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body class="recipe-popup">
+
+  <header class="page__header">
+    <h2 id="recipe-title">Loading…</h2>
+  </header>
+
+  <div class="recipe-popup__scroll" id="recipe-body">
+    <div class="loading-state">
+      <span class="spinner"></span>
+      <span>Loading recipe tree…</span>
+    </div>
+  </div>
+
+  <script src="recipe.js"></script>
+</body>
+</html>

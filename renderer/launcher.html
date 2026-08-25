@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<!--
+  launcher.html — Main launcher window
+  Shows a button per category plus shortcuts to Delivery Box and Settings.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self'">
+  <title>GW2 Trading Post Checker</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+<div class="launcher" id="launcher">
+  <div class="launcher__logo">GW2 Trading Post Checker</div>
+  <div class="launcher__version">v0.1.2</div>
+  <p class="launcher__subtitle">Select a category to monitor</p>
+
+  <!-- Category buttons injected here by launcher.js -->
+  <span class="launcher__section-label">Categories</span>
+  <div id="category-buttons" class="category-buttons"></div>
+
+  <hr class="launcher__divider">
+
+  <button class="btn btn--secondary btn--block" id="btn-delivery">
+    📦&ensp;Delivery Box
+  </button>
+  <button class="btn btn--secondary btn--block" id="btn-settings">
+    ⚙&ensp;Settings
+  </button>
+</div>
+
+<!-- Toast container for notifications -->
+<div class="toast-container" id="toasts"></div>
+
+<script src="launcher.js"></script>
+</body>
+</html>

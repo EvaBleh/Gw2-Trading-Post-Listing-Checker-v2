@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<!--
+  settings.html — Settings window
+  Allows editing the API key, adding/removing/renaming categories,
+  and adding/removing items within each category.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self'">
+  <title>Settings</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body class="settings">
+
+  <!-- Title -->
+  <header class="page__header">
+    <h2>⚙ Settings</h2>
+  </header>
+
+  <!-- API key row -->
+  <div class="settings__api-row">
+    <label class="field-label" style="flex-shrink:0;margin:0">API Key</label>
+    <input  class="input" type="password" id="api-key-input"
+            placeholder="Paste your GW2 API key here…" autocomplete="off">
+    <button class="btn btn--secondary btn--sm" id="btn-toggle-key">Show</button>
+    <a class="btn btn--ghost btn--sm" id="btn-api-link" href="#"
+       title="Open ArenaNet applications page">Get a key ↗</a>
+  </div>
+
+  <div class="settings__refresh-row">
+    <label class="field-label" for="refresh-interval-input">Refresh every</label>
+    <input class="input settings__refresh-input" type="number" id="refresh-interval-input"
+           min="10" max="86400" step="1">
+    <span class="text-muted">seconds</span>
+  </div>
+
+  <!-- Raw JSON import/export -->
+  <section class="settings__json">
+    <div class="settings__json-header">
+      <span>Config JSON</span>
+      <div>
+        <button class="btn btn--secondary btn--sm settings__json-btn settings__json-btn--export" id="btn-export-json">Export</button>
+        <button class="btn btn--secondary btn--sm settings__json-btn" id="btn-copy-json">Copy</button>
+        <button class="btn btn--secondary btn--sm settings__json-btn settings__json-btn--import" id="btn-import-json">Import</button>
+      </div>
+    </div>
+    <textarea class="settings__json-input" id="config-json" spellcheck="false"
+              placeholder="Paste config JSON here, then click Import…"></textarea>
+  </section>
+
+  <!-- Main two-column body -->
+  <div class="settings__body">
+
+    <!-- Left: category list -->
+    <aside class="settings__cats">
+      <div class="settings__cats-header">Categories</div>
+
+      <ul class="settings__cat-list" id="cat-list">
+        <!-- Injected by settings.js -->
+      </ul>
+
+      <div class="settings__cat-actions">
+        <button class="btn btn--secondary btn--sm" id="btn-add-cat">+ Add</button>
+        <button class="btn btn--secondary btn--sm" id="btn-rename-cat">✎ Rename</button>
+        <button class="btn btn--danger    btn--sm" id="btn-del-cat">✕ Delete</button>
+      </div>
+
+      <div class="settings__cat-default">
+        <span>Default:</span>
+        <label class="radio-label">
+          <input type="radio" name="cat-default" value="sell" id="rd-sell" checked>
+          Sell
+        </label>
+        <label class="radio-label">
+          <input type="radio" name="cat-default" value="buy" id="rd-buy">
+          Buy
+        </label>
+      </div>
+    </aside>
+
+    <!-- Right: item table -->
+    <section class="settings__items">
+      <div class="settings__items-header" id="items-header">
+        Select a category to manage its items
+      </div>
+
+      <div class="settings__item-table-wrap">
+        <table class="settings-table">
+          <thead>
+            <tr>
+              <th>Item Name</th>
+              <th>Item ID</th>
+              <th>Default</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="item-tbody">
+            <!-- Injected by settings.js -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Add-item form -->
+      <div class="settings__add-form">
+        <input class="input"      id="inp-item-name"    type="text"   placeholder="Item name…">
+        <input class="input input--id" id="inp-item-id" type="number" placeholder="Item ID">
+        <div class="radio-group">
+          <label class="radio-label">
+            <input type="radio" name="add-ot" value="sell" id="add-rd-sell" checked> Sell
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="add-ot" value="buy" id="add-rd-buy"> Buy
+          </label>
+        </div>
+        <button class="btn btn--primary  btn--sm" id="btn-add-item">+ Add Item</button>
+        <button class="btn btn--danger   btn--sm" id="btn-del-item">✕ Delete</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- Footer: Apply / Cancel -->
+  <div class="settings__footer">
+    <button class="btn btn--secondary" id="btn-cancel">Cancel</button>
+    <button class="btn btn--primary"   id="btn-apply">Apply & Save</button>
+  </div>
+
+  <!-- Toast container -->
+  <div class="toast-container" id="toasts"></div>
+
+  <script src="settings.js"></script>
+</body>
+</html>

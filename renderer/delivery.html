@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<!--
+  delivery.html — TP Delivery Box window
+  Shows items waiting for pickup and funds available.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self'">
+  <title>TP Delivery Box</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body class="page">
+
+  <header class="page__header flex-between">
+    <h2>📦 Delivery Box</h2>
+    <button class="btn btn--secondary btn--sm" id="btn-refresh">↺&ensp;Refresh</button>
+  </header>
+
+  <!-- Funds banner -->
+  <div class="delivery__coins" id="coins-display">
+    Loading funds…
+  </div>
+
+  <!-- Items table -->
+  <div class="delivery__table-wrap">
+    <table class="delivery-table" id="delivery-table">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th class="right">Quantity</th>
+        </tr>
+      </thead>
+      <tbody id="delivery-body">
+        <tr>
+          <td colspan="2">
+            <div class="loading-state">
+              <span class="spinner"></span>
+              <span>Loading delivery box…</span>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <footer class="page__footer">
+    <span id="status-text"></span>
+  </footer>
+
+  <script src="delivery.js"></script>
+</body>
+</html>

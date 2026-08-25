@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<!--
+  category.html — Category window
+  Displays a responsive grid of item cards for a single category.
+  The category name is passed as a URL query parameter: ?category=Runes
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self'">
+  <title>Category</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body class="page">
+
+  <!-- Header: category name + manual refresh button -->
+  <header class="page__header flex-between">
+    <h2 id="category-title">Loading…</h2>
+    <button class="btn btn--secondary btn--sm" id="btn-refresh">
+      ↺&ensp;Refresh now
+    </button>
+  </header>
+
+  <!-- Scrollable card grid -->
+  <main class="page__body" id="card-area">
+    <div class="card-grid" id="card-grid">
+      <!-- Item cards injected by category.js -->
+    </div>
+  </main>
+
+  <!-- Status bar -->
+  <footer class="page__footer">
+    <span id="status-text">Initialising…</span>
+    <span id="next-refresh" class="text-muted"></span>
+  </footer>
+
+  <!-- Recipe popup is rendered in a separate window via main process -->
+
+  <script src="category.js"></script>
+</body>
+</html>
