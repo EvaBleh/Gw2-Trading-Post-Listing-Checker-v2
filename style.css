@@ -864,12 +864,14 @@ width:         100%;
   padding:    var(--space-sm) var(--space-md);
   cursor:     pointer;
   color:      var(--text-secondary);
+  background: var(--bg-surface);
   font-size:  var(--font-size-base);
   border-bottom: 1px solid var(--border-subtle);
   transition: background var(--transition), color var(--transition);
   white-space: nowrap;
   overflow:   hidden;
   text-overflow: ellipsis;
+  width: 100%;
 }
 .settings__cat-item:hover            { background: var(--bg-hover); color: var(--text-primary); }
 .settings__cat-item--active          { background: var(--bg-surface-2); color: var(--accent); border-left: 2px solid var(--accent); }
@@ -991,6 +993,39 @@ width:         100%;
 .settings > .toast-container {
   bottom: 76px;
   max-width: calc(100% - 32px);
+}
+
+.category-dialog {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 10000;
+}
+
+.category-dialog[hidden] { display: none; }
+
+.category-dialog__panel {
+  width: min(360px, calc(100% - 32px));
+  padding: var(--space-lg);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+}
+
+.category-dialog__title {
+  margin: 0 0 var(--space-md);
+  color: var(--text-heading);
+  font-size: var(--font-size-lg);
+}
+
+.category-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
 }
 
 .toast {
