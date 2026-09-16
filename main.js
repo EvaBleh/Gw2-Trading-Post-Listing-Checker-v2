@@ -569,14 +569,17 @@ ipcMain.handle("fetch-stock", async (_evt, itemIds) => {
   addEntries("Trading Post Delivery", delivery?.items);
 
   const characterInventories = await Promise.all(
-    characterNames.map(async (name) => ({
-      name,
-      inventory: await apiGet(`/characters/${encodeURIComponent(name)}/inventory`),
-    }))
+    characterNames.map(async (name) => {
+      const inventory = await apiGet(`/characters/${encodeURIComponent(name)}/inventory`);
+      const bags = Array.isArray(inventory?.bags) ? inventory.bags : Array.isArray(inventory) ? inventory : [];
+      return {
+        name,
+        inventoryItems: bags.flatMap((bag) => Array.isArray(bag?.inventory) ? bag.inventory : []),
+      };
+    })
   );
-  for (const { name, inventory } of characterInventories) {
-    const bags = Array.isArray(inventory) ? inventory : [];
-    addEntries(name, bags.flatMap((bag) => Array.isArray(bag?.inventory) ? bag.inventory : []));
+  for (const { name, inventoryItems } of characterInventories) {
+    addEntries(name, inventoryItems);
   }
 
   return totals;
