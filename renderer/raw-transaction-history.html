@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self'">
+  <title>TP Raw Transaction History</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body class="page">
+  <header class="page__header flex-between">
+    <h2>Raw Transaction History</h2>
+    <button class="btn btn--secondary btn--sm" id="btn-refresh">↺&ensp;Refresh</button>
+  </header>
+
+  <main class="raw-history__body">
+    <pre class="raw-history__data" id="raw-history-data">Loading raw transaction history…</pre>
+  </main>
+
+  <footer class="page__footer">
+    <span id="status-text"></span>
+  </footer>
+
+  <script src="raw-transaction-history.js"></script>
+</body>
+</html>

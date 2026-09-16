@@ -68,6 +68,13 @@
       </div>
 
       <div class="settings__cat-default">
+        <label class="field-label" for="category-type-select">Type</label>
+        <select class="input settings__cat-type" id="category-type-select">
+          <option value="orders">Trading orders</option>
+          <option value="stock">Account stock</option>
+        </select>
+      </div>
+      <div class="settings__cat-default" id="category-order-default">
         <span>Default:</span>
         <label class="radio-label">
           <input type="radio" name="cat-default" value="sell" id="rd-sell" checked>
@@ -77,6 +84,11 @@
           <input type="radio" name="cat-default" value="buy" id="rd-buy">
           Buy
         </label>
+      </div>
+      <div class="settings__cat-default" id="category-alert-default">
+        <label class="field-label" for="category-alert-threshold">Alert when undercut by</label>
+        <input class="input settings__alert-threshold" type="number" id="category-alert-threshold" min="0" max="9999" step="1" value="0">
+        <span class="text-muted">+</span>
       </div>
     </aside>
 
@@ -92,6 +104,7 @@
             <tr>
               <th>Item Name</th>
               <th>Item ID</th>
+              <th>Minimum</th>
               <th>Default</th>
               <th></th>
             </tr>
@@ -106,6 +119,7 @@
       <div class="settings__add-form">
         <input class="input"      id="inp-item-name"    type="text"   placeholder="Item name…">
         <input class="input input--id" id="inp-item-id" type="number" placeholder="Item ID">
+        <input class="input input--minimum" id="inp-item-minimum" type="number" min="0" step="1" placeholder="Minimum">
         <div class="radio-group">
           <label class="radio-label">
             <input type="radio" name="add-ot" value="sell" id="add-rd-sell" checked> Sell
@@ -113,6 +127,10 @@
           <label class="radio-label">
             <input type="radio" name="add-ot" value="buy" id="add-rd-buy"> Buy
           </label>
+        </div>
+        <div class="settings__item-actions">
+          <button class="btn btn--secondary btn--sm" id="btn-move-item-up" type="button" title="Move item up">↑</button>
+          <button class="btn btn--secondary btn--sm" id="btn-move-item-down" type="button" title="Move item down">↓</button>
         </div>
         <button class="btn btn--primary  btn--sm" id="btn-add-item">+ Add Item</button>
         <button class="btn btn--danger   btn--sm" id="btn-del-item">✕ Delete</button>
@@ -133,6 +151,11 @@
     <form class="category-dialog__panel" id="category-dialog-form">
       <h3 class="category-dialog__title" id="category-dialog-title">Category name</h3>
       <input class="input" id="category-name-input" type="text" maxlength="80" autocomplete="off">
+      <label class="field-label" for="category-dialog-type">Category type</label>
+      <select class="input" id="category-dialog-type">
+        <option value="orders">Trading orders</option>
+        <option value="stock">Account stock</option>
+      </select>
       <div class="category-dialog__actions">
         <button class="btn btn--secondary btn--sm" type="button" id="category-dialog-cancel">Cancel</button>
         <button class="btn btn--primary btn--sm" type="submit">OK</button>

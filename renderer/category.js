@@ -10,6 +10,7 @@
 
 const DEFAULT_UPDATE_INTERVAL_MS = 60_000;
 
+/** Current automatic refresh interval, updated from saved settings. */
 let updateIntervalMs = DEFAULT_UPDATE_INTERVAL_MS;
 
 // ── DOM refs ───────────────────────────────────────────────────────────────
@@ -24,6 +25,9 @@ const refreshBtn   = document.getElementById("btn-refresh");
 
 /** @type {Map<number, ItemCard>}  itemId → card instance */
 const cards = new Map();
+const alertState = new Map();
+let alertThreshold = 0;
+let alertAudioCtx = null;
 
 /** Whether a fetch is currently in-flight */
 let fetching = false;
@@ -56,6 +60,7 @@ async function init() {
   }
   const catData  = (config.items || {})[catName] || {};
   const catDefault = (catData._default_order_type || "sell").toLowerCase();
+  alertThreshold = Number.isInteger(catData._alert_threshold) ? catData._alert_threshold : 0;
 
   // Build a card for every item in this category
   for (const [name, raw] of Object.entries(catData)) {
@@ -67,6 +72,7 @@ async function init() {
     const card = new ItemCard(name, itemId, defaultOrderType);
     gridEl.appendChild(card.element);
     cards.set(itemId, card);
+    alertState.set(itemId, false);
   }
 
   if (cards.size === 0) {
@@ -76,10 +82,34 @@ async function init() {
        </p>`;
   }
 
+  layoutCards();
+  new ResizeObserver(layoutCards).observe(gridEl);
+
   // First fetch immediately, then on interval
   fetchAndUpdate();
   scheduleRefresh();
   startCountdown();
+}
+
+/** Keep each card in an explicit column so expanding one cannot rebalance others. */
+function layoutCards() {
+  const cardList = [...cards.values()];
+  if (!cardList.length) return;
+
+  const styles = getComputedStyle(gridEl);
+  const minWidth = parseFloat(styles.getPropertyValue("--card-min-width")) || 320;
+  const gap = parseFloat(styles.columnGap) || 12;
+  const padding = parseFloat(styles.paddingLeft) + parseFloat(styles.paddingRight);
+  const columnCount = Math.max(1, Math.floor((gridEl.clientWidth - padding + gap) / (minWidth + gap)));
+
+  gridEl.querySelectorAll(".card-column").forEach((column) => column.remove());
+  const columns = Array.from({ length: columnCount }, () => {
+    const column = document.createElement("div");
+    column.className = "card-column";
+    gridEl.appendChild(column);
+    return column;
+  });
+  cardList.forEach((card, index) => columns[index % columnCount].appendChild(card.element));
 }
 
 /**
@@ -127,7 +157,16 @@ async function fetchAndUpdate() {
     ]);
 
     for (const [itemId, card] of cards) {
-      await card.update(sells, buys, books);
+      const undercutCount = await card.update(sells, buys, books);
+      if (alertThreshold > 0 && Number.isInteger(undercutCount)) {
+        const isTriggered = undercutCount >= alertThreshold;
+        if (isTriggered && !alertState.get(itemId)) {
+          await playUndercutAlert();
+        }
+        alertState.set(itemId, isTriggered);
+      } else {
+        alertState.set(itemId, false);
+      }
     }
 
     statusEl.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
@@ -321,59 +360,55 @@ class ItemCard {
   async update(sells, buys, orderBooks) {
     if (!this.watching) {
       this._setStatus("Not watched", "neutral");
-      this._markerEl.textContent  = "";
+      this._markerEl.textContent = "";
       this._detailsEl.textContent = "";
       this._summaryEl.textContent = "—";
-      this._summaryEl.className   = "item-card__summary text-muted";
-      return;
+      this._summaryEl.className = "item-card__summary text-muted";
+      return 0;
     }
 
-    const ot        = this.orderType;
-    const book      = orderBooks[this.itemId] || { sells: [], buys: [] };
+    const ot = this.orderType;
+    const book = orderBooks[this.itemId] || { sells: [], buys: [] };
     const myListing = ot === "sell" ? sells[this.itemId] : buys[this.itemId];
-    const bookSide  = ot === "sell" ? book.sells         : book.buys;
-    const oppBest   = bookSide.length ? bookSide[0].unit_price : null;
-    const lbl       = ot === "sell" ? "Sell" : "Buy";
+    const bookSide = ot === "sell" ? book.sells : book.buys;
+    const oppBest = bookSide.length ? bookSide[0].unit_price : null;
+    const lbl = ot === "sell" ? "Sell" : "Buy";
 
     if (!myListing) {
       this._setStatus(`${lbl} listing: No`, "no");
-      this._markerEl.textContent  = "";
+      this._markerEl.textContent = "";
       this._detailsEl.textContent = "";
       this._setSummary("No listing", "danger");
-      return;
+      return 0;
     }
 
     const { price: myPrice, quantity: myQty } = myListing;
     this._setStatus(`${lbl} listing: Yes (${myQty})`, "yes");
 
-    const myPriceStr  = await window.api.copperToGold(myPrice);
-    const oppBestStr  = await window.api.copperToGold(oppBest);
+    const myPriceStr = await window.api.copperToGold(myPrice);
+    const oppBestStr = await window.api.copperToGold(oppBest);
+    let count = 0;
 
     if (oppBest != null) {
-      let count   = 0;
-      let isBest  = false;
-      let marker  = "";
-
       if (ot === "sell") {
-        // Count items listed strictly cheaper than mine
         for (const tier of bookSide) {
           if (tier.unit_price < myPrice) count += tier.quantity;
           else break;
         }
-        isBest = count === 0;
-        marker = isBest ? "✓ Lowest" : `✗ Undercut by ${count}`;
       } else {
-        // Count orders priced strictly higher than mine
         for (const tier of bookSide) {
           if (tier.unit_price > myPrice) count += tier.quantity;
           else break;
         }
-        isBest = count === 0;
-        marker = isBest ? "✓ Highest" : `✗ Overcut by ${count}`;
       }
 
+      const isBest = count === 0;
+      const marker = ot === "sell"
+        ? (isBest ? "✓ Lowest" : `✗ Undercut by ${count}`)
+        : (isBest ? "✓ Highest" : `✗ Overcut by ${count}`);
+
       this._markerEl.textContent = marker;
-      this._markerEl.className   = `item-card__marker ${isBest ? "marker--best" : "marker--not-best"}`;
+      this._markerEl.className = `item-card__marker ${isBest ? "marker--best" : "marker--not-best"}`;
       this._setSummary(marker, isBest ? "success" : "danger");
     } else {
       this._markerEl.textContent = "";
@@ -381,46 +416,61 @@ class ItemCard {
     }
 
     const compareLabel = ot === "sell" ? "Market Lowest" : "Market Highest";
-    this._detailsEl.textContent =
-      `Your price: ${myPriceStr}   |   ${compareLabel}: ${oppBestStr}`;
+    this._detailsEl.textContent = `Your price: ${myPriceStr}   |   ${compareLabel}: ${oppBestStr}`;
+    return count;
   }
 
-  // ── Helpers ──────────────────────────────────────────────────────────────
-
-  /**
-   * @param {string} text
-   * @param {"yes"|"no"|"neutral"|"error"} state
-   */
   _setStatus(text, state) {
     this._statusEl.textContent = text;
-    this._statusEl.className   = `item-card__status status--${state}`;
+    this._statusEl.className = `item-card__status status--${state}`;
   }
 
-  /**
-   * @param {string} text
-   * @param {"success"|"danger"|"neutral"} variant
-   */
   _setSummary(text, variant) {
     this._summaryEl.textContent = text;
-    this._summaryEl.className   = `item-card__summary text-${variant}`;
+    this._summaryEl.className = `item-card__summary text-${variant}`;
   }
 }
 
-// ── Recipe popup ───────────────────────────────────────────────────────────
+async function playUndercutAlert() {
+  const AudioCtor = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtor) return;
 
-/**
- * Open a small recipe popup window by storing the item info in sessionStorage
- * and opening a new renderer page.  (Electron's BrowserWindow query param
- * approach works here — see main.js openCategoryWindow for the pattern.)
- *
- * We navigate to recipe.html in a new window via shell or a dedicated IPC
- * call.  For simplicity we open it inside an Electron child window using
- * the existing openCategoryWindow-style IPC.  Here we open a standalone
- * recipe.html via a dedicated IPC.
- */
-async function openRecipePopup(name, itemId) {
-  // Delegate to main process which will open a BrowserWindow
-  await window.api.openRecipeWindow(name, itemId);
+  try {
+    if (!alertAudioCtx) {
+      alertAudioCtx = new AudioCtor();
+      window.addEventListener("pointerdown", () => {
+        if (alertAudioCtx && alertAudioCtx.state === "suspended") {
+          alertAudioCtx.resume();
+        }
+      }, { once: true });
+      window.addEventListener("keydown", () => {
+        if (alertAudioCtx && alertAudioCtx.state === "suspended") {
+          alertAudioCtx.resume();
+        }
+      }, { once: true });
+    }
+
+    if (alertAudioCtx.state === "suspended") {
+      await alertAudioCtx.resume();
+    }
+
+    const oscillator = alertAudioCtx.createOscillator();
+    const gainNode = alertAudioCtx.createGain();
+    oscillator.type = "triangle";
+    oscillator.frequency.value = 880;
+    gainNode.gain.value = 0.0001;
+
+    oscillator.connect(gainNode);
+    gainNode.connect(alertAudioCtx.destination);
+
+    const startAt = alertAudioCtx.currentTime;
+    gainNode.gain.exponentialRampToValueAtTime(0.18, startAt + 0.02);
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.35);
+    oscillator.start(startAt);
+    oscillator.stop(startAt + 0.35);
+  } catch (error) {
+    console.warn("Undercut alert audio failed:", error);
+  }
 }
 
 // ── Boot ───────────────────────────────────────────────────────────────────

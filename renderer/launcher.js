@@ -6,6 +6,8 @@
 
 const categoryButtonsEl = document.getElementById("category-buttons");
 const deliveryButton    = document.getElementById("btn-delivery");
+const currentOrdersButton = document.getElementById("btn-current-orders");
+const transactionHistoryButton = document.getElementById("btn-transaction-history");
 const settingsButton    = document.getElementById("btn-settings");
 
 /** Build the category buttons from the current saved configuration. */
@@ -26,6 +28,14 @@ async function loadCategories() {
 
 deliveryButton.addEventListener("click", () => {
   window.api.openDeliveryWindow();
+});
+
+currentOrdersButton.addEventListener("click", () => {
+  window.api.openCurrentOrdersWindow();
+});
+
+transactionHistoryButton.addEventListener("click", () => {
+  window.api.openTransactionHistoryWindow();
 });
 
 settingsButton.addEventListener("click", () => {

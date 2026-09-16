@@ -30,12 +30,24 @@ contextBridge.exposeInMainWorld("api", {
    */
   fetchOrders: () => ipcRenderer.invoke("fetch-orders"),
 
+  /** Fetch every current buy and sell transaction for the authenticated account. */
+  fetchCurrentTransactions: () => ipcRenderer.invoke("fetch-current-transactions"),
+
+  /** Fetch completed buy and sell transaction history for the authenticated account. */
+  fetchTransactionHistory: (forceRefresh = false) => ipcRenderer.invoke("fetch-transaction-history", forceRefresh),
+
+  /** Delete the locally archived transaction history. */
+  clearTransactionHistory: () => ipcRenderer.invoke("clear-transaction-history"),
+
   /**
    * Fetch the full order book depth for an array of item IDs.
    * @param {number[]} itemIds
    * @returns {Promise<Record<number,{sells,buys}>>}
    */
   fetchOrderBooks: (itemIds) => ipcRenderer.invoke("fetch-order-books", itemIds),
+
+  /** Fetch account-wide quantities and their inventory locations. */
+  fetchStock: (itemIds) => ipcRenderer.invoke("fetch-stock", itemIds),
 
   /**
    * Fetch the TP delivery box contents.
@@ -64,6 +76,18 @@ contextBridge.exposeInMainWorld("api", {
 
   /** Open (or focus) the delivery box window. */
   openDeliveryWindow:  ()     => ipcRenderer.invoke("open-delivery-window"),
+
+  /** Open a recipe popup window for an item. */
+  openRecipeWindow: (name, itemId) => ipcRenderer.invoke("open-recipe-window", name, itemId),
+
+  /** Open (or focus) the current orders window. */
+  openCurrentOrdersWindow: () => ipcRenderer.invoke("open-current-orders-window"),
+
+  /** Open (or focus) the transaction history window. */
+  openTransactionHistoryWindow: () => ipcRenderer.invoke("open-transaction-history-window"),
+
+  /** Open (or focus) the uncollapsed raw transaction data window. */
+  openRawTransactionHistoryWindow: () => ipcRenderer.invoke("open-raw-transaction-history-window"),
 
   /** Open (or focus) the settings window. */
   openSettingsWindow:  ()     => ipcRenderer.invoke("open-settings-window"),

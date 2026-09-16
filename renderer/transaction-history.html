@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self'">
+  <title>TP Transaction History</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body class="page">
+  <header class="page__header flex-between">
+    <h2>◷ Transaction History</h2>
+    <div class="history__actions">
+      <button class="btn btn--danger btn--sm" id="btn-clear">Clear History</button>
+      <button class="btn btn--secondary btn--sm" id="btn-raw">Raw Data</button>
+      <button class="btn btn--secondary btn--sm" id="btn-refresh">↺&ensp;Refresh</button>
+    </div>
+  </header>
+
+  <div class="history__toolbar">
+    <fieldset class="history__filter">
+      <legend>Show</legend>
+      <label><input type="radio" name="history-type" value="Buy" checked> Buy history</label>
+      <label><input type="radio" name="history-type" value="Sell"> Sell history</label>
+    </fieldset>
+    <label class="history__search">
+      <span>Search</span>
+      <input class="input" id="history-search" type="search" placeholder="Item name" autocomplete="off">
+    </label>
+    <div class="history__total-label">Selected total <strong id="history-total">Loading…</strong></div>
+  </div>
+
+  <main class="history__body" id="history-body">
+    <div class="loading-state"><span class="spinner"></span><span>Loading transaction history…</span></div>
+  </main>
+
+  <footer class="page__footer">
+    <span id="status-text"></span>
+  </footer>
+
+  <script src="transaction-history.js"></script>
+</body>
+</html>

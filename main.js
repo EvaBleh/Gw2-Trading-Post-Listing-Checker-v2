@@ -25,6 +25,7 @@ updateElectronApp();
 /** Directory where the user's writable config.json is stored. */
 const CONFIG_DIR  = app.getPath("userData");
 const CONFIG_PATH = path.join(CONFIG_DIR, "config.json");
+const TRANSACTION_HISTORY_PATH = path.join(CONFIG_DIR, "transaction-history.json");
 
 // ---------------------------------------------------------------------------
 // Default config — written on first launch if no config.json exists
@@ -68,6 +69,39 @@ function loadConfig() {
 function saveConfig(cfg) {
   fs.mkdirSync(CONFIG_DIR, { recursive: true });
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2), "utf8");
+}
+
+/** Load the persistent transaction archive, if one exists. */
+function loadTransactionHistory() {
+  try {
+    const saved = JSON.parse(fs.readFileSync(TRANSACTION_HISTORY_PATH, "utf8"));
+    if (!Array.isArray(saved.transactions)) return null;
+    return {
+      transactions: saved.transactions,
+      itemNames: saved.itemNames && typeof saved.itemNames === "object" ? saved.itemNames : {},
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Persist the transaction archive without changing the user's config file. */
+function saveTransactionHistory(history) {
+  fs.mkdirSync(CONFIG_DIR, { recursive: true });
+  fs.writeFileSync(TRANSACTION_HISTORY_PATH, JSON.stringify(history), "utf8");
+}
+
+/** Merge API results into the archive, retaining records outside the API window. */
+function mergeTransactionHistory(existing, latest) {
+  const merged = new Map();
+  for (const transaction of [...(existing?.transactions || []), ...latest.transactions]) {
+    const key = `${transaction.type}:${transaction.id ?? `${transaction.item_id}:${transaction.created}:${transaction.price}:${transaction.quantity}`}`;
+    merged.set(key, transaction);
+  }
+  return {
+    transactions: [...merged.values()],
+    itemNames: { ...(existing?.itemNames || {}), ...latest.itemNames },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -167,6 +201,62 @@ async function apiGetAllPages(path, useKey = true) {
 }
 
 /**
+ * Fetch history pages from newest to oldest until the saved archive is reached.
+ * The history endpoints return newest transactions first, so incremental
+ * refreshes only need to download pages newer than the archive cutoff.
+ *
+ * @param {string} path
+ * @param {string|null} cutoff ISO timestamp already present in the archive
+ * @param {boolean} useKey
+ * @returns {Promise<any[]>}
+ */
+async function apiGetHistorySince(path, cutoff, useKey = true) {
+  if (!cutoff) return apiGetAllPages(path, useKey);
+
+  const cfg = loadConfig();
+  const token = useKey ? cfg.api_key : null;
+  const sep = path.includes("?") ? "&" : "?";
+  const all = [];
+  let page = 0;
+  let totalPages = 1;
+
+  while (page < totalPages) {
+    const { data, headers } = await httpGet(
+      `${API_BASE}${path}${sep}page=${page}&page_size=${PAGE_SIZE}`,
+      token
+    );
+    totalPages = parseInt(headers["x-page-total"] || "1", 10);
+    const entries = Array.isArray(data) ? data : [];
+    let reachedCutoff = false;
+
+    for (const transaction of entries) {
+      if (transaction.created && transaction.created <= cutoff) {
+        reachedCutoff = true;
+      } else {
+        all.push(transaction);
+      }
+    }
+
+    if (reachedCutoff || entries.length === 0) break;
+    page += 1;
+  }
+
+  return all;
+}
+
+/** Find the newest archived timestamp for each transaction side. */
+function getHistoryCutoffs(history) {
+  const cutoffs = { Buy: null, Sell: null };
+  for (const transaction of history?.transactions || []) {
+    if (transaction.type in cutoffs && transaction.created &&
+        (!cutoffs[transaction.type] || transaction.created > cutoffs[transaction.type])) {
+      cutoffs[transaction.type] = transaction.created;
+    }
+  }
+  return cutoffs;
+}
+
+/**
  * Fetch item names for a batch of item IDs from /v2/items.
  * Returns a map of { id: name }.
  *
@@ -200,6 +290,9 @@ async function fetchItemNames(ids) {
 
 /** @type {Record<number, string>} */
 const itemNameCache = {};
+
+/** @type {{transactions: object[], itemNames: Record<number, string>}|null} */
+let transactionHistoryCache = loadTransactionHistory();
 
 /** @type {Record<number, object|null>} */
 const recipeCache = {};
@@ -352,6 +445,71 @@ ipcMain.handle("fetch-orders", async () => {
 });
 
 /**
+ * ipc: "fetch-current-transactions"
+ * Fetches every current buy and sell transaction without merging entries.
+ *
+ * @returns {Promise<Array<object>>}
+ */
+ipcMain.handle("fetch-current-transactions", async () => {
+  const [sells, buys] = await Promise.all([
+    apiGetAllPages("/commerce/transactions/current/sells"),
+    apiGetAllPages("/commerce/transactions/current/buys"),
+  ]);
+  const transactions = [
+    ...sells.map((transaction) => ({ ...transaction, type: "Sell" })),
+    ...buys.map((transaction) => ({ ...transaction, type: "Buy" })),
+  ];
+  const itemNames = await resolveItemNames(
+    [...new Set(transactions.map((transaction) => transaction.item_id))]
+  );
+  return { transactions, itemNames };
+});
+
+/**
+ * ipc: "fetch-transaction-history"
+ * Fetches every completed buy and sell transaction without merging entries.
+ *
+ * @param {Electron.IpcMainInvokeEvent} event
+ * @param {boolean} forceRefresh Retained for renderer API compatibility.
+ * @returns {Promise<{transactions: object[], itemNames: Record<number,string>}>}
+ */
+ipcMain.handle("fetch-transaction-history", async (event, forceRefresh = false) => {
+  const sender = event.sender;
+  const cutoffs = getHistoryCutoffs(transactionHistoryCache);
+
+  sender?.send("transaction-history-status", transactionHistoryCache
+    ? "Fetching new transactions…"
+    : "Fetching buy and sell history…");
+  const [sells, buys] = await Promise.all([
+    apiGetHistorySince("/commerce/transactions/history/sells", cutoffs.Sell),
+    apiGetHistorySince("/commerce/transactions/history/buys", cutoffs.Buy),
+  ]);
+  sender?.send("transaction-history-status", "Resolving item names…");
+  const transactions = [
+    ...sells.map((transaction) => ({ ...transaction, type: "Sell" })),
+    ...buys.map((transaction) => ({ ...transaction, type: "Buy" })),
+  ];
+  const itemNames = await resolveItemNames(
+    [...new Set(transactions.map((transaction) => transaction.item_id))]
+  );
+  sender?.send("transaction-history-status", "Preparing transaction history…");
+  transactionHistoryCache = mergeTransactionHistory(transactionHistoryCache, { transactions, itemNames });
+  saveTransactionHistory(transactionHistoryCache);
+  return transactionHistoryCache;
+});
+
+/** Delete the persistent transaction archive and its in-memory copy. */
+ipcMain.handle("clear-transaction-history", () => {
+  transactionHistoryCache = null;
+  try {
+    fs.unlinkSync(TRANSACTION_HISTORY_PATH);
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+  return { ok: true };
+});
+
+/**
  * ipc: "fetch-order-books"
  * Fetches the full depth order book for a list of item IDs from /commerce/listings.
  * Sells are sorted ascending (cheapest first); buys descending (highest first).
@@ -367,6 +525,61 @@ ipcMain.handle("fetch-order-books", async (_evt, itemIds) => {
     result[entry.id] = { sells: entry.sells || [], buys: entry.buys || [] };
   }
   return result;
+});
+
+/**
+ * ipc: "fetch-stock"
+ * Counts the requested items across shared inventory, bank, material storage,
+ * Trading Post delivery, and every character inventory, retaining the source
+ * of each quantity.
+ *
+ * @param {number[]} itemIds
+ * @returns {Record<number,{total:number,locations:Array<{location:string,amount:number}>}>}
+ */
+ipcMain.handle("fetch-stock", async (_evt, itemIds) => {
+  const wanted = new Set(itemIds.map(Number));
+  const totals = Object.fromEntries(itemIds.map((id) => [id, { total: 0, locations: [] }]));
+
+  const addEntries = (location, entries) => {
+    if (!Array.isArray(entries)) return;
+    const amounts = {};
+    for (const entry of entries || []) {
+      if (!entry || typeof entry !== "object") continue;
+      const id = Number(entry.id);
+      if (!wanted.has(id) || !entry.count) continue;
+      amounts[id] = (amounts[id] || 0) + entry.count;
+    }
+    for (const [id, amount] of Object.entries(amounts)) {
+      totals[id].total += amount;
+      totals[id].locations.push({ location, amount });
+    }
+  };
+
+  const [shared, bank, materials, delivery, characterNames] = await Promise.all([
+    apiGet("/account/inventory"),
+    apiGet("/account/bank"),
+    apiGet("/account/materials"),
+    apiGet("/commerce/delivery"),
+    apiGet("/characters"),
+  ]);
+
+  addEntries("Shared Inventory", shared);
+  addEntries("Bank", bank);
+  addEntries("Material Storage", materials);
+  addEntries("Trading Post Delivery", delivery?.items);
+
+  const characterInventories = await Promise.all(
+    characterNames.map(async (name) => ({
+      name,
+      inventory: await apiGet(`/characters/${encodeURIComponent(name)}/inventory`),
+    }))
+  );
+  for (const { name, inventory } of characterInventories) {
+    const bags = Array.isArray(inventory) ? inventory : [];
+    addEntries(name, bags.flatMap((bag) => Array.isArray(bag?.inventory) ? bag.inventory : []));
+  }
+
+  return totals;
 });
 
 /**
@@ -427,6 +640,32 @@ ipcMain.handle("open-category-window", (_evt, categoryName) => {
 ipcMain.handle("open-delivery-window", () => openDeliveryWindow());
 
 /**
+ * ipc: "open-recipe-window"
+ * Opens a recipe popup for a specific item.
+ */
+ipcMain.handle("open-recipe-window", (_evt, name, itemId) => {
+  openRecipeWindow(name, itemId);
+});
+
+/**
+ * ipc: "open-current-orders-window"
+ * Opens (or focuses) the current orders window.
+ */
+ipcMain.handle("open-current-orders-window", () => openCurrentOrdersWindow());
+
+/**
+ * ipc: "open-transaction-history-window"
+ * Opens (or focuses) the transaction history window.
+ */
+ipcMain.handle("open-transaction-history-window", () => openTransactionHistoryWindow());
+
+/**
+ * ipc: "open-raw-transaction-history-window"
+ * Opens (or focuses) the uncollapsed raw transaction data window.
+ */
+ipcMain.handle("open-raw-transaction-history-window", () => openRawTransactionHistoryWindow());
+
+/**
  * ipc: "open-settings-window"
  * Opens (or focuses) the settings window.
  */
@@ -455,6 +694,15 @@ const categoryWindows = {};
 
 /** @type {BrowserWindow|null} */
 let deliveryWin = null;
+
+/** @type {BrowserWindow|null} */
+let currentOrdersWin = null;
+
+/** @type {BrowserWindow|null} */
+let transactionHistoryWin = null;
+
+/** @type {BrowserWindow|null} */
+let rawTransactionHistoryWin = null;
 
 /** @type {BrowserWindow|null} */
 let settingsWin = null;
@@ -514,7 +762,9 @@ function openCategoryWindow(categoryName) {
     title: `GW2 TP — ${categoryName}`,
   });
 
-  win.loadFile(path.join(__dirname, "renderer", "category.html"), {
+  const category = loadConfig().items?.[categoryName] || {};
+  const categoryPage = category._type === "stock" ? "stock.html" : "category.html";
+  win.loadFile(path.join(__dirname, "renderer", categoryPage), {
     query: { category: categoryName },
   });
 
@@ -544,6 +794,93 @@ function openDeliveryWindow() {
   deliveryWin.once("ready-to-show", () => deliveryWin.show());
   deliveryWin.setMenuBarVisibility(false);
   deliveryWin.on("closed", () => { deliveryWin = null; });
+}
+
+/** Opens a window showing the recipe tree for an item. */
+function openRecipeWindow(name, itemId) {
+  const title = `Recipe — ${name}`;
+  const recipeWin = new BrowserWindow({
+    ...WINDOW_BASE_OPTIONS,
+    width: 520,
+    height: 560,
+    minWidth: 360,
+    minHeight: 300,
+    title,
+    parent: launcherWin || undefined,
+    modal: false,
+  });
+
+  recipeWin.loadFile(path.join(__dirname, "renderer", "recipe.html"), {
+    query: { name, id: String(itemId) },
+  });
+  recipeWin.once("ready-to-show", () => recipeWin.show());
+  recipeWin.setMenuBarVisibility(false);
+}
+
+/** Open (or focus) the current orders window. */
+function openCurrentOrdersWindow() {
+  if (currentOrdersWin && !currentOrdersWin.isDestroyed()) {
+    currentOrdersWin.focus();
+    return;
+  }
+
+  currentOrdersWin = new BrowserWindow({
+    ...WINDOW_BASE_OPTIONS,
+    width:     820,
+    height:    600,
+    minWidth:  560,
+    minHeight: 300,
+    title: "TP Current Orders",
+  });
+
+  currentOrdersWin.loadFile(path.join(__dirname, "renderer", "current-orders.html"));
+  currentOrdersWin.once("ready-to-show", () => currentOrdersWin.show());
+  currentOrdersWin.setMenuBarVisibility(false);
+  currentOrdersWin.on("closed", () => { currentOrdersWin = null; });
+}
+
+/** Open (or focus) the transaction history window. */
+function openTransactionHistoryWindow() {
+  if (transactionHistoryWin && !transactionHistoryWin.isDestroyed()) {
+    transactionHistoryWin.focus();
+    return;
+  }
+
+  transactionHistoryWin = new BrowserWindow({
+    ...WINDOW_BASE_OPTIONS,
+    width:     900,
+    height:    700,
+    minWidth:  560,
+    minHeight: 420,
+    title: "TP Transaction History",
+  });
+
+  transactionHistoryWin.loadFile(path.join(__dirname, "renderer", "transaction-history.html"));
+  transactionHistoryWin.once("ready-to-show", () => transactionHistoryWin.show());
+  transactionHistoryWin.setMenuBarVisibility(false);
+  transactionHistoryWin.on("closed", () => { transactionHistoryWin = null; });
+}
+
+/** Open (or focus) the raw transaction data window. */
+function openRawTransactionHistoryWindow() {
+  if (rawTransactionHistoryWin && !rawTransactionHistoryWin.isDestroyed()) {
+    rawTransactionHistoryWin.focus();
+    return;
+  }
+
+  rawTransactionHistoryWin = new BrowserWindow({
+    ...WINDOW_BASE_OPTIONS,
+    width:     900,
+    height:    700,
+    minWidth:  560,
+    minHeight: 420,
+    title: "TP Raw Transaction History",
+  });
+
+  rawTransactionHistoryWin.loadFile(path.join(__dirname, "renderer", "raw-transaction-history.html"));
+  rawTransactionHistoryWin.once("ready-to-show", () => rawTransactionHistoryWin.show());
+  rawTransactionHistoryWin.setMenuBarVisibility(false);
+  rawTransactionHistoryWin.on("closed", () => { rawTransactionHistoryWin = null; });
 }
 
 /**
