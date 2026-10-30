@@ -231,6 +231,12 @@ p, label, span {
   justify-content: space-between;
 }
 
+.history__sync-progress {
+  margin-left: auto;
+  color: var(--accent);
+  text-align: right;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    Buttons
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -1195,6 +1201,51 @@ width:         100%;
   flex-wrap:     wrap;
 }
 
+.settings__cat-move {
+  padding: var(--space-sm);
+  border-top: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-xs);
+}
+
+.settings__cat-folder-name {
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-surface-2);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.settings__cat-folder-items {
+  margin-left: var(--space-md);
+  border-left: 1px solid var(--border);
+}
+
+.launcher-folder {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.launcher-folder__summary {
+  padding: var(--space-sm) var(--space-md);
+  cursor: pointer;
+  background: var(--bg-surface-2);
+  font-weight: 600;
+}
+
+.launcher-folder__children {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--space-sm);
+}
+
 .settings__cat-default {
   padding:       var(--space-xs) var(--space-md);
   border-top:    1px solid var(--border);
@@ -1285,6 +1336,13 @@ width:         100%;
 .settings__add-form .input { flex: 1; min-width: 120px; }
 .settings__add-form .input--id { max-width: 100px; flex: 0 0 100px; }
 .settings__add-form .input--minimum { max-width: 110px; flex: 0 0 110px; }
+.settings__item-search { position: relative; flex: 1 1 220px; min-width: 180px; }
+.settings__item-search .input { width: 100%; }
+.settings__item-search-results { position: absolute; z-index: 20; left: 0; right: 0; bottom: calc(100% + 4px); max-height: 220px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-surface); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); }
+.settings__item-search-results:empty { display: none; }
+.settings__item-search-result { width: 100%; border: 0; border-bottom: 1px solid var(--border-subtle); padding: var(--space-sm) var(--space-md); display: flex; justify-content: space-between; gap: var(--space-md); text-align: left; color: var(--text-primary); background: var(--bg-surface); cursor: pointer; }
+.settings__item-search-result:hover { background: var(--bg-hover); color: var(--accent); }
+.settings__item-search-empty { padding: var(--space-sm) var(--space-md); color: var(--text-muted); }
 
 .settings__item-actions {
   display: flex;
@@ -1421,3 +1479,87 @@ width:         100%;
 .badge--danger  { background: rgba(224,92,92,0.15);  color: var(--color-danger);  }
 .badge--neutral { background: rgba(122,154,181,0.15);color: var(--color-neutral); }
 .badge--warning { background: rgba(224,160,48,0.15); color: var(--color-warning); }
+
+/* Investment tracker */
+.investments__summary {
+  padding: var(--space-sm) var(--space-lg);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.investments__summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm) var(--space-md);
+}
+.investments__list { display: flex; flex-direction: column; gap: var(--space-sm); }
+.investments__empty { padding: var(--space-xl); text-align: center; color: var(--text-muted); }
+.investments__card { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-surface); overflow: hidden; }
+.investments__card-header { min-height: 58px; padding: var(--space-sm) var(--space-md); display: grid; grid-template-columns: 24px minmax(180px, 1fr) repeat(3, auto) minmax(220px, auto) 104px; align-items: center; gap: var(--space-md); cursor: pointer; }
+.investments__card-header:hover { background: var(--bg-hover); }
+.investments__toggle { border: 0; color: var(--accent); background: transparent; cursor: pointer; }
+.investments__name { font-weight: 600; color: var(--text-primary); }
+.investments__summary-item { font-size: var(--font-size-sm); color: var(--text-secondary); white-space: nowrap; }
+.investments__market-profit { display: grid; grid-template-columns: repeat(2, minmax(90px, auto)); gap: 2px var(--space-sm); font-size: var(--font-size-sm); color: var(--text-secondary); white-space: nowrap; }
+.investments__market-profit span:nth-child(3), .investments__market-profit span:nth-child(4) { color: var(--accent); }
+.profit-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  background: rgba(201,170,113,0.08);
+}
+.profit-pill--sell { color: var(--color-success); }
+.profit-pill--buy { color: var(--color-warning); }
+.profit-pill--value { color: var(--text-secondary); }
+.profit--positive { color: var(--color-success) !important; }
+.profit--negative { color: var(--color-danger) !important; }
+.profit--neutral { color: var(--text-secondary) !important; }
+.investments__plus { width: 32px; height: 32px; border: 1px solid var(--accent-dim); border-radius: var(--radius-sm); color: var(--accent); background: var(--bg-surface-2); font-size: 20px; cursor: pointer; }
+.investments__plus:hover { border-color: var(--accent); background: var(--bg-hover); }
+.investments__item-actions, .investments__row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
+.investments__action { width: 32px; height: 32px; border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-secondary); background: var(--bg-surface-2); cursor: pointer; }
+.investments__action:hover { border-color: var(--accent); color: var(--accent); background: var(--bg-hover); }
+.investments__remove-item:hover, .investments__remove-entry:hover { border-color: var(--color-danger); color: var(--color-danger); }
+.sold-investments { display: flex; flex-direction: column; gap: var(--space-sm); margin-bottom: var(--space-md); }
+.sold-investments__card { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-surface); padding: var(--space-md); }
+.sold-investments__header { display: flex; justify-content: space-between; align-items: center; gap: var(--space-md); }
+.sold-investments__list { display: grid; gap: var(--space-xs); }
+.sold-investments__item { display: flex; justify-content: space-between; gap: var(--space-md); padding: var(--space-xs) 0; border-bottom: 1px solid var(--border-subtle); }
+.sold-investments__item:last-child { border-bottom: 0; }
+.investments__category-tabs { display: flex; gap: var(--space-xs); padding: var(--space-sm) var(--space-md); overflow-x: auto; border-bottom: 1px solid var(--border-subtle); }
+.investments__category-tab { border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-xs) var(--space-sm); color: var(--text-secondary); background: var(--bg-surface); cursor: pointer; white-space: nowrap; }
+.investments__category-tab:hover { color: var(--text-primary); border-color: var(--accent); }
+.investments__category-tab--active { color: var(--accent); border-color: var(--accent); background: var(--bg-surface-2); }
+.investments__tabs { display: flex; gap: var(--space-xs); padding: var(--space-sm) var(--space-md) 0; border-bottom: 1px solid var(--border); }
+.investments__tab { border: 0; border-bottom: 2px solid transparent; padding: var(--space-sm) var(--space-md); color: var(--text-secondary); background: transparent; cursor: pointer; }
+.investments__tab:hover { color: var(--text-primary); }
+.investments__tab--active { border-bottom-color: var(--accent); color: var(--accent); }
+.investments__panel[hidden] { display: none; }
+.sold-investments__group { width: 100%; border: 0; padding: var(--space-sm) var(--space-md); display: grid; grid-template-columns: 24px minmax(180px, 1fr) repeat(3, auto); align-items: center; gap: var(--space-md); text-align: left; color: var(--text-primary); background: transparent; cursor: pointer; }
+.sold-investments__group:hover { background: var(--bg-hover); }
+.sold-investments__transactions { border-top: 1px solid var(--border-subtle); padding: var(--space-sm); }
+.sold-investments__transactions--hidden { display: none; }
+.sold-investments__chevron--open { color: var(--accent); }
+.investments__entries { border-top: 1px solid var(--border-subtle); padding: var(--space-sm); }
+.investments__entries--hidden { display: none; }
+.investments__table { width: 100%; border-collapse: collapse; }
+.investments__table th, .investments__table td { padding: var(--space-sm) var(--space-md); border-bottom: 1px solid var(--border-subtle); }
+.investments__table th { text-align: left; color: var(--text-secondary); font-size: var(--font-size-sm); }
+.investments__table td.right, .investments__table th.right { text-align: right; }
+.investments__dialog { width: min(520px, calc(100% - 32px)); display: flex; flex-direction: column; gap: var(--space-sm); }
+.investments__search-results { max-height: 180px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); margin-top: var(--space-xs); }
+.investments__search-results:empty { display: none; }
+.investments__search-result { width: 100%; border: 0; border-bottom: 1px solid var(--border-subtle); padding: var(--space-sm) var(--space-md); text-align: left; color: var(--text-primary); background: var(--bg-surface); cursor: pointer; }
+.investments__search-result:hover { background: var(--bg-hover); color: var(--accent); }
+.investments__search-empty { padding: var(--space-sm) var(--space-md); color: var(--text-muted); }
+.investments__selected-item { padding: var(--space-sm) var(--space-md); border: 1px solid var(--accent-dim); border-radius: var(--radius-sm); color: var(--accent); background: var(--bg-surface-2); }
+.investments__price-row { display: grid; grid-template-columns: minmax(70px, 1fr) 16px minmax(70px, 1fr) 16px minmax(70px, 1fr) 16px; align-items: center; gap: var(--space-xs); }
+.investments__price-row .input { width: 100%; }

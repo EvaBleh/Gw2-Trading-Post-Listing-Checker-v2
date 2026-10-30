@@ -8,7 +8,9 @@
 const bodyEl = document.getElementById("history-body");
 const totalEl = document.getElementById("history-total");
 const statusEl = document.getElementById("status-text");
+const progressEl = document.getElementById("history-progress");
 const refreshBtn = document.getElementById("btn-refresh");
+const rescanBtn = document.getElementById("btn-rescan");
 const clearBtn = document.getElementById("btn-clear");
 const rawBtn = document.getElementById("btn-raw");
 const typeInputs = document.querySelectorAll('input[name="history-type"]');
@@ -35,6 +37,14 @@ function copperToGold(copper) {
 // The main process sends progress while the authenticated history request runs.
 window.api.on("transaction-history-status", (message) => {
   statusEl.textContent = message;
+});
+window.api.on("transaction-history-progress", ({ message, active }) => {
+  progressEl.textContent = message;
+  progressEl.hidden = !active;
+});
+window.api.getTransactionHistoryProgress().then(({ message, active }) => {
+  progressEl.textContent = message;
+  progressEl.hidden = !active;
 });
 
 /** Aggregate transactions by type, item, and day once per fetch. */
@@ -217,24 +227,44 @@ function escHtml(value) {
     .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-/** Fetch the latest completed transactions and render the selected side. */
+/** Read and render the local archive without waiting for the API. */
+async function loadSavedHistory() {
+  statusEl.textContent = "Loading saved transaction history…";
+  try {
+    ({ transactions, itemNames } = await window.api.getTransactionHistory());
+    groupTransactions();
+    await render();
+  } catch (error) {
+    totalEl.textContent = "N/A";
+    bodyEl.innerHTML = `<div class="history__empty text-danger">Error: ${escHtml(error.message)}</div>`;
+    statusEl.textContent = "Failed to load saved transaction history.";
+  }
+}
+
+/** Fetch new history or perform a full API-window rescan. */
 async function load(forceRefresh = false) {
-  bodyEl.innerHTML = '<div class="loading-state"><span class="spinner"></span><span>Loading…</span></div>';
-  statusEl.textContent = "Starting transaction history refresh…";
+  statusEl.textContent = forceRefresh
+    ? "Starting full history rescan…"
+    : "Starting transaction history refresh…";
   try {
     ({ transactions, itemNames } = await window.api.fetchTransactionHistory(forceRefresh));
     groupTransactions();
     await render();
     statusEl.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
   } catch (error) {
-    totalEl.textContent = "N/A";
-    bodyEl.innerHTML = `<div class="history__empty text-danger">Error: ${escHtml(error.message)}</div>`;
-    statusEl.textContent = "Failed to load transaction history.";
+    if (!transactions.length) {
+      totalEl.textContent = "N/A";
+      bodyEl.innerHTML = `<div class="history__empty text-danger">Error: ${escHtml(error.message)}</div>`;
+    }
+    statusEl.textContent = `Refresh failed; showing saved history: ${escHtml(error.message)}`;
   }
 }
 
-// Refresh fetches new API data; changing the radio only re-renders cached data.
-refreshBtn.addEventListener("click", () => load(true));
+window.api.on("transaction-history-updated", loadSavedHistory);
+
+// Normal refresh is incremental; rescan retries every page still exposed by the API.
+refreshBtn.addEventListener("click", () => load(false));
+rescanBtn.addEventListener("click", () => load(true));
 rawBtn.addEventListener("click", () => window.api.openRawTransactionHistoryWindow());
 clearBtn.addEventListener("click", async () => {
   const confirmed = window.confirm(
@@ -262,4 +292,4 @@ window.addEventListener("resize", () => {
     }
   });
 });
-load();
+loadSavedHistory();

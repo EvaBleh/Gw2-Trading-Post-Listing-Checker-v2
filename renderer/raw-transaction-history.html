@@ -10,7 +10,10 @@
 <body class="page">
   <header class="page__header flex-between">
     <h2>Raw Transaction History</h2>
-    <button class="btn btn--secondary btn--sm" id="btn-refresh">↺&ensp;Refresh</button>
+    <div class="history__actions">
+      <button class="btn btn--secondary btn--sm" id="btn-import">Import JSON</button>
+      <button class="btn btn--secondary btn--sm" id="btn-refresh">↺&ensp;Refresh</button>
+    </div>
   </header>
 
   <main class="raw-history__body">
@@ -19,6 +22,7 @@
 
   <footer class="page__footer">
     <span id="status-text"></span>
+    <span class="history__sync-progress" id="history-progress" aria-live="polite" hidden></span>
   </footer>
 
   <script src="raw-transaction-history.js"></script>

@@ -14,6 +14,7 @@
       <button class="btn btn--danger btn--sm" id="btn-clear">Clear History</button>
       <button class="btn btn--secondary btn--sm" id="btn-raw">Raw Data</button>
       <button class="btn btn--secondary btn--sm" id="btn-refresh">↺&ensp;Refresh</button>
+      <button class="btn btn--secondary btn--sm" id="btn-rescan">Rescan 90 days</button>
     </div>
   </header>
 
@@ -36,6 +37,7 @@
 
   <footer class="page__footer">
     <span id="status-text"></span>
+    <span class="history__sync-progress" id="history-progress" aria-live="polite" hidden></span>
   </footer>
 
   <script src="transaction-history.js"></script>

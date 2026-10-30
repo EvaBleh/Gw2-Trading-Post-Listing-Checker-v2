@@ -18,7 +18,6 @@ async function init() {
   const categoryName = new URLSearchParams(window.location.search).get("category") || "Unknown";
   document.title = `GW2 TP - ${categoryName}`;
   titleEl.textContent = categoryName;
-
   const config = await window.api.getConfig();
   const refreshSeconds = Number(config.refresh_interval_seconds);
   if (Number.isInteger(refreshSeconds) && refreshSeconds >= 10 && refreshSeconds <= 86400) {

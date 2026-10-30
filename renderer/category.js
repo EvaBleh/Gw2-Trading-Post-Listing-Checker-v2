@@ -52,7 +52,6 @@ async function init() {
 
   document.title   = `GW2 TP — ${catName}`;
   titleEl.textContent = catName;
-
   const config   = await window.api.getConfig();
   const refreshSeconds = Number(config.refresh_interval_seconds);
   if (Number.isInteger(refreshSeconds) && refreshSeconds >= 10 && refreshSeconds <= 86400) {

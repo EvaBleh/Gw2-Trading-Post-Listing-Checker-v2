@@ -36,6 +36,15 @@ contextBridge.exposeInMainWorld("api", {
   /** Fetch completed buy and sell transaction history for the authenticated account. */
   fetchTransactionHistory: (forceRefresh = false) => ipcRenderer.invoke("fetch-transaction-history", forceRefresh),
 
+  /** Read locally archived transaction history without making a network request. */
+  getTransactionHistory: () => ipcRenderer.invoke("get-transaction-history"),
+
+  /** Read current background transaction-history sync progress. */
+  getTransactionHistoryProgress: () => ipcRenderer.invoke("get-transaction-history-progress"),
+
+  /** Import and merge transaction records from a JSON file. */
+  importTransactionHistory: () => ipcRenderer.invoke("import-transaction-history"),
+
   /** Delete the locally archived transaction history. */
   clearTransactionHistory: () => ipcRenderer.invoke("clear-transaction-history"),
 
@@ -69,6 +78,26 @@ contextBridge.exposeInMainWorld("api", {
    */
   copperToGold: (copper) => ipcRenderer.invoke("copper-to-gold", copper),
 
+  /** Search GW2 items by name for the investment tracker. */
+  searchInvestmentItems: (query) => ipcRenderer.invoke("search-investment-items", query),
+
+  /** Get local item database status. */
+  getItemDatabaseStatus: () => ipcRenderer.invoke("get-item-database-status"),
+
+  /** Download and replace the local item name/id database. */
+  refreshItemDatabase: () => ipcRenderer.invoke("refresh-item-database"),
+
+  /** Load manually tracked investments. */
+  getInvestments: () => ipcRenderer.invoke("get-investments"),
+
+  /** Add an amount and unit-price entry to an investment. */
+  addInvestment: (investment) => ipcRenderer.invoke("add-investment", investment),
+  markInvestmentSold: (sale) => ipcRenderer.invoke("mark-investment-sold", sale),
+  getSoldInvestments: () => ipcRenderer.invoke("get-sold-investments"),
+  updateInvestmentEntry: (update) => ipcRenderer.invoke("update-investment-entry", update),
+  removeInvestmentEntry: (removal) => ipcRenderer.invoke("remove-investment-entry", removal),
+  removeInvestmentItem: (itemId) => ipcRenderer.invoke("remove-investment-item", itemId),
+
   // ── Window management ────────────────────────────────────────────────────
 
   /** Open (or focus) a category window for the given category name. */
@@ -88,6 +117,9 @@ contextBridge.exposeInMainWorld("api", {
 
   /** Open (or focus) the uncollapsed raw transaction data window. */
   openRawTransactionHistoryWindow: () => ipcRenderer.invoke("open-raw-transaction-history-window"),
+
+  /** Open (or focus) the investment tracker window. */
+  openInvestmentsWindow: () => ipcRenderer.invoke("open-investments-window"),
 
   /** Open (or focus) the settings window. */
   openSettingsWindow:  ()     => ipcRenderer.invoke("open-settings-window"),

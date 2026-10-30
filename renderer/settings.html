@@ -63,8 +63,15 @@
 
       <div class="settings__cat-actions">
         <button class="btn btn--secondary btn--sm" id="btn-add-cat">+ Add</button>
+        <button class="btn btn--secondary btn--sm" id="btn-add-folder">+ Folder</button>
         <button class="btn btn--secondary btn--sm" id="btn-rename-cat">✎ Rename</button>
-        <button class="btn btn--danger    btn--sm" id="btn-del-cat">✕ Delete</button>
+        <button class="btn btn--danger btn--sm" id="btn-del-cat">✕ Delete</button>
+      </div>
+      <div class="settings__cat-move">
+        <select class="input" id="category-folder-select" aria-label="Move selected category to folder">
+          <option value="">Root</option>
+        </select>
+        <button class="btn btn--secondary btn--sm" id="btn-move-category">Move</button>
       </div>
 
       <div class="settings__cat-default">
@@ -72,6 +79,7 @@
         <select class="input settings__cat-type" id="category-type-select">
           <option value="orders">Trading orders</option>
           <option value="stock">Account stock</option>
+          <option value="investment">Investment</option>
         </select>
       </div>
       <div class="settings__cat-default" id="category-order-default">
@@ -117,7 +125,10 @@
 
       <!-- Add-item form -->
       <div class="settings__add-form">
-        <input class="input"      id="inp-item-name"    type="text"   placeholder="Item name…">
+        <div class="settings__item-search">
+          <input class="input" id="inp-item-name" type="search" placeholder="Search item name…" autocomplete="off">
+          <div class="settings__item-search-results" id="item-name-search-results"></div>
+        </div>
         <input class="input input--id" id="inp-item-id" type="number" placeholder="Item ID">
         <input class="input input--minimum" id="inp-item-minimum" type="number" min="0" step="1" placeholder="Minimum">
         <div class="radio-group">
@@ -155,6 +166,7 @@
       <select class="input" id="category-dialog-type">
         <option value="orders">Trading orders</option>
         <option value="stock">Account stock</option>
+        <option value="investment">Investment</option>
       </select>
       <div class="category-dialog__actions">
         <button class="btn btn--secondary btn--sm" type="button" id="category-dialog-cancel">Cancel</button>
