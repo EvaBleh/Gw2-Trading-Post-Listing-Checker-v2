@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'">
+  <title>Investment Tracker</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body class="page">
+  <header class="page__header flex-between">
+    <h2>📈 Investment Tracker</h2>
+    <div class="flex gap-sm">
+      <button class="btn btn--secondary btn--sm" id="btn-refresh-items">↺ Items</button>
+      <button class="btn btn--secondary btn--sm" id="btn-refresh-prices">↺ Prices</button>
+      <button class="btn btn--primary btn--sm" id="btn-new-investment">+ New Investment</button>
+    </div>
+  </header>
+
+  <nav class="investments__tabs" aria-label="Investment views">
+    <button type="button" class="investments__tab investments__tab--active" data-tab="active">Active investments</button>
+    <button type="button" class="investments__tab" data-tab="sold">Sold investments</button>
+  </nav>
+
+  <div class="investments__summary" id="investments-summary">Loading investments…</div>
+  <div class="page__body">
+    <div id="active-investments" class="investments__panel">
+      <div id="investments-list" class="investments__list"></div>
+    </div>
+    <div id="sold-investments" class="investments__panel" hidden></div>
+  </div>
+
+  <div class="category-dialog" id="investment-dialog" hidden>
+    <form class="category-dialog__panel investments__dialog" id="investment-form">
+      <h3 class="category-dialog__title" id="investment-dialog-title">Add investment</h3>
+
+      <div id="item-search-section">
+        <label class="field-label" for="item-search">Item name</label>
+        <input class="input" id="item-search" type="search" placeholder="Search GW2 items…" autocomplete="off">
+        <div class="investments__search-results" id="item-search-results"></div>
+      </div>
+
+      <div class="investments__selected-item" id="selected-item" hidden></div>
+
+      <label class="field-label" for="investment-amount">Amount</label>
+      <input class="input" id="investment-amount" type="number" min="1" step="1" required>
+
+      <label class="field-label">Unit price</label>
+      <div class="investments__price-row">
+        <input class="input" id="price-gold" type="number" min="0" step="1" value="0" aria-label="Gold">
+        <span>g</span>
+        <input class="input" id="price-silver" type="number" min="0" max="99" step="1" value="0" aria-label="Silver">
+        <span>s</span>
+        <input class="input" id="price-copper" type="number" min="0" max="99" step="1" value="0" aria-label="Copper">
+        <span>c</span>
+      </div>
+
+      <div class="category-dialog__actions">
+        <button type="button" class="btn btn--secondary" id="investment-cancel">Cancel</button>
+        <button type="submit" class="btn btn--primary" id="investment-save">Save Investment</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="investments.js"></script>
+</body>
+</html>
