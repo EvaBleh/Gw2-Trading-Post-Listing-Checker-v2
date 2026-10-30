@@ -22,12 +22,18 @@ const categoryOrderDefault = document.getElementById("category-order-default");
 const categoryAlertDefault = document.getElementById("category-alert-default");
 const categoryAlertThresholdInput = document.getElementById("category-alert-threshold");
 const categoryDialogType = document.getElementById("category-dialog-type");
+const itemNameInput = document.getElementById("inp-item-name");
+const itemIdInput = document.getElementById("inp-item-id");
+const itemNameSearchResults = document.getElementById("item-name-search-results");
+let itemSearchTimer = null;
 
 const DEFAULT_REFRESH_INTERVAL_SECONDS = 60;
 
 let config = { api_key: "", items: {} };
 /** Name of the category currently shown in the editor. */
 let selectedCategory = null;
+/** Name of the folder currently selected in the category sidebar. */
+let selectedFolder = null;
 /** Name of the item currently selected for deletion or editing. */
 let selectedItemName = null;
 
@@ -60,10 +66,68 @@ function itemDetails(value, category) {
   };
 }
 
+/** Normalize folder membership while preserving category compatibility. */
+function categoryFolders() {
+  config.categoryFolders = config.categoryFolders && typeof config.categoryFolders === "object"
+    ? config.categoryFolders
+    : {};
+  for (const categories of Object.values(config.categoryFolders)) {
+    if (!Array.isArray(categories)) continue;
+  }
+  return config.categoryFolders;
+}
+
+function folderForCategory(categoryName) {
+  for (const [folderName, categories] of Object.entries(categoryFolders())) {
+    if (Array.isArray(categories) && categories.includes(categoryName)) return folderName;
+  }
+  return "";
+}
+
 /** Rebuild the category navigation from the working config. */
 function renderCategories() {
   categoryList.innerHTML = "";
+  const folders = categoryFolders();
+  const assigned = new Set(Object.values(folders).flatMap((categories) => Array.isArray(categories) ? categories : []));
+
+  const folderSelect = document.getElementById("category-folder-select");
+  folderSelect.innerHTML = '<option value="">Root</option>';
+  for (const folderName of Object.keys(folders)) {
+    folderSelect.add(new Option(folderName, folderName));
+  }
+  folderSelect.value = selectedCategory ? folderForCategory(selectedCategory) : "";
+
+  for (const [folderName, categories] of Object.entries(folders)) {
+    const li = document.createElement("li");
+    li.className = "settings__cat-folder";
+    const header = document.createElement("button");
+    header.type = "button";
+    header.className = `settings__cat-folder-name${folderName === selectedFolder ? " settings__cat-item--active" : ""}`;
+    header.textContent = `${folderName}`;
+    header.addEventListener("click", () => {
+      selectedFolder = folderName;
+      selectedCategory = null;
+      selectedItemName = null;
+      renderCategories();
+      renderItems();
+    });
+    li.appendChild(header);
+    const nested = document.createElement("div");
+    nested.className = "settings__cat-folder-items";
+    for (const name of categories.filter((category) => config.items?.[category])) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `settings__cat-item${name === selectedCategory ? " settings__cat-item--active" : ""}`;
+      button.textContent = name;
+      button.addEventListener("click", () => selectCategory(name));
+      nested.appendChild(button);
+    }
+    li.appendChild(nested);
+    categoryList.appendChild(li);
+  }
+
   for (const name of Object.keys(config.items || {})) {
+    if (assigned.has(name)) continue;
     const button = document.createElement("button");
     button.type = "button";
     button.className = `settings__cat-item${name === selectedCategory ? " settings__cat-item--active" : ""}`;
@@ -77,6 +141,8 @@ function renderCategories() {
 
 /** Rebuild the item table for the selected category. */
 function populateSelectedItemForm() {
+  clearTimeout(itemSearchTimer);
+  itemNameSearchResults.innerHTML = "";
   const nameInput = document.getElementById("inp-item-name");
   const idInput = document.getElementById("inp-item-id");
   const minimumInput = document.getElementById("inp-item-minimum");
@@ -112,9 +178,9 @@ function renderItems() {
 
   const category = categoryData(selectedCategory);
   itemsHeader.textContent = selectedCategory;
-  const categoryType = category._type === "stock" ? "stock" : "orders";
+  const categoryType = ["stock", "investment"].includes(category._type) ? category._type : "orders";
   categoryTypeSelect.value = categoryType;
-  categoryOrderDefault.hidden = categoryType === "stock";
+  categoryOrderDefault.hidden = categoryType !== "orders";
   categoryAlertDefault.hidden = categoryType !== "orders";
   categoryAlertThresholdInput.value = Number.isInteger(category._alert_threshold) ? category._alert_threshold : 0;
   document.getElementById("inp-item-minimum").disabled = categoryType !== "stock";
@@ -142,6 +208,7 @@ function renderItems() {
 /** Select a category and refresh both editor sections. */
 function selectCategory(name) {
   selectedCategory = name;
+  selectedFolder = null;
   selectedItemName = null;
   renderCategories();
   renderItems();
@@ -178,6 +245,34 @@ function requestCategoryName(title, initialValue = "", initialType = "orders") {
   });
 }
 
+async function addFolder() {
+  const name = await requestCategoryName("Add folder");
+  if (!name) return;
+  const folders = categoryFolders();
+  if (folders[name]) return showMessage("A folder with that name already exists.", true);
+  if (config.items[name]) return showMessage("A category with that name already exists.", true);
+  folders[name] = [];
+  renderCategories();
+}
+
+function moveSelectedCategory() {
+  if (!selectedCategory) return showMessage("Select a category first.", true);
+  const folders = categoryFolders();
+  for (const categories of Object.values(folders)) {
+    if (Array.isArray(categories)) {
+      const index = categories.indexOf(selectedCategory);
+      if (index >= 0) categories.splice(index, 1);
+    }
+  }
+  const folderName = document.getElementById("category-folder-select").value;
+  if (folderName) {
+    if (!Array.isArray(folders[folderName])) folders[folderName] = [];
+    folders[folderName].push(selectedCategory);
+  }
+  renderCategories();
+  showMessage(folderName ? `Moved "${selectedCategory}" to "${folderName}".` : `Moved "${selectedCategory}" to root.`);
+}
+
 /** Add a new empty category to the working config. */
 async function addCategory() {
   const name = await requestCategoryName("Add category");
@@ -193,6 +288,17 @@ async function addCategory() {
 
 /** Rename the selected category while preserving its item configuration. */
 async function renameCategory() {
+  if (selectedFolder) {
+    const folders = categoryFolders();
+    const name = await requestCategoryName("Rename folder", selectedFolder);
+    if (!name || name === selectedFolder) return;
+    if (folders[name] || config.items[name]) return showMessage("A folder or category with that name already exists.", true);
+    folders[name] = folders[selectedFolder];
+    delete folders[selectedFolder];
+    selectedFolder = name;
+    renderCategories();
+    return;
+  }
   if (!selectedCategory) return;
   const name = await requestCategoryName("Rename category", selectedCategory, categoryData(selectedCategory)._type || "orders");
   if (!name || name === selectedCategory) return;
@@ -202,14 +308,35 @@ async function renameCategory() {
     config.items[name]._alert_threshold = 0;
   }
   delete config.items[selectedCategory];
+  for (const categories of Object.values(categoryFolders())) {
+    if (Array.isArray(categories)) {
+      const index = categories.indexOf(selectedCategory);
+      if (index >= 0) categories[index] = name;
+    }
+  }
   selectCategory(name);
 }
 
-/** Delete the selected category after user confirmation. */
+/** Delete the selected category or folder after user confirmation. */
 function deleteCategory() {
-  if (!selectedCategory) return showMessage("Select a category first.", true);
+  if (selectedFolder) {
+    if (!confirm(`Delete folder "${selectedFolder}"? Categories inside it will move to root.`)) return;
+    delete categoryFolders()[selectedFolder];
+    selectedFolder = null;
+    selectedCategory = Object.keys(config.items)[0] || null;
+    renderCategories();
+    renderItems();
+    return;
+  }
+  if (!selectedCategory) return showMessage("Select a category or folder first.", true);
   if (!confirm(`Delete category "${selectedCategory}"?`)) return;
   delete config.items[selectedCategory];
+  for (const categories of Object.values(categoryFolders())) {
+    if (Array.isArray(categories)) {
+      const index = categories.indexOf(selectedCategory);
+      if (index >= 0) categories.splice(index, 1);
+    }
+  }
   selectedCategory = Object.keys(config.items)[0] || null;
   selectedItemName = null;
   renderCategories();
@@ -385,6 +512,8 @@ document.getElementById("btn-toggle-key").addEventListener("click", (event) => {
   event.currentTarget.textContent = apiKeyInput.type === "password" ? "Show" : "Hide";
 });
 document.getElementById("btn-add-cat").addEventListener("click", addCategory);
+document.getElementById("btn-add-folder").addEventListener("click", addFolder);
+document.getElementById("btn-move-category").addEventListener("click", moveSelectedCategory);
 document.getElementById("btn-rename-cat").addEventListener("click", renameCategory);
 document.getElementById("btn-del-cat").addEventListener("click", deleteCategory);
 document.getElementById("btn-add-item").addEventListener("click", addItem);
@@ -415,6 +544,50 @@ categoryAlertThresholdInput.addEventListener("change", () => {
   const value = Number(categoryAlertThresholdInput.value);
   categoryData(selectedCategory)._alert_threshold = Number.isInteger(value) && value >= 0 ? value : 0;
   renderItems();
+});
+
+itemNameInput.addEventListener("input", () => {
+  clearTimeout(itemSearchTimer);
+  itemIdInput.value = "";
+  const query = itemNameInput.value.trim();
+  if (!query) {
+    itemNameSearchResults.innerHTML = "";
+    return;
+  }
+
+  itemNameSearchResults.innerHTML = '<div class="settings__item-search-empty">Searching…</div>';
+  itemSearchTimer = setTimeout(async () => {
+    try {
+      const items = await window.api.searchInvestmentItems(query);
+      itemNameSearchResults.innerHTML = "";
+      if (!items.length) {
+        itemNameSearchResults.innerHTML = '<div class="settings__item-search-empty">No items found.</div>';
+        return;
+      }
+
+      for (const item of items.slice(0, 15)) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "settings__item-search-result";
+        button.innerHTML = `<span>${escapeHtml(item.name)}</span><span class="text-muted">${item.id}</span>`;
+        button.addEventListener("click", () => {
+          itemNameInput.value = item.name;
+          itemIdInput.value = String(item.id);
+          itemNameSearchResults.innerHTML = "";
+          itemIdInput.focus();
+        });
+        itemNameSearchResults.appendChild(button);
+      }
+    } catch (error) {
+      itemNameSearchResults.innerHTML = `<div class="settings__item-search-empty text-danger">${escapeHtml(error.message)}</div>`;
+    }
+  }, 250);
+});
+
+document.addEventListener("click", (event) => {
+  if (!event.target.closest(".settings__item-search")) {
+    itemNameSearchResults.innerHTML = "";
+  }
 });
 
 /** Load the saved configuration and initialize the settings editor. */
